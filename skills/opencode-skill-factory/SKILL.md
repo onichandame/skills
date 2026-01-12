@@ -28,8 +28,48 @@ Use this when:
      - When it should be invoked
      - Step-by-step behavior instructions
      - Example usage if appropriate
+     - **Cross-references to additional files**: For complex content >500 lines, add links like:
+       - `See [references/advanced-patterns.md](references/advanced-patterns.md) for detailed examples`
+       - `Refer to [references/troubleshooting.md](references/troubleshooting.md) for common issues`
 6. Validate the generated frontmatter and ensure the description is 20-1024 characters long and speaks to when OpenCode should trigger the skill
 7. Return only the generated `SKILL.md` content
+
+## Progressive Loading Guidelines
+
+### When to Use Additional Files
+
+**Use `references/` files for:**
+- Detailed examples and patterns
+- Comprehensive troubleshooting guides
+- Advanced techniques or edge cases
+- API documentation or reference materials
+
+**Use `assets/` files for:**
+- Templates for output formatting
+- Configuration files or schemas
+- Reusable code snippets
+- Static resources (images, icons)
+
+### How to Reference Additional Files in SKILL.md
+
+Use markdown cross-references to link to additional content:
+
+```markdown
+## Advanced Examples
+See [references/examples.md](references/examples.md) for comprehensive usage examples.
+
+## Troubleshooting
+Refer to [references/troubleshooting.md](references/troubleshooting.md) for common issues.
+
+## Template Usage
+Use the templates in [assets/templates/](assets/templates/) for consistent output formatting.
+```
+
+**Loading Behavior:**
+- `SKILL.md` loads when skill triggers
+- `references/` files load only when referenced
+- `assets/` files load only when explicitly accessed
+- `scripts/` execute directly without loading into context
 
 ## Skill Locations and Folder Structure
 
@@ -57,26 +97,71 @@ OpenCode searches for skills in these locations (highest to lowest priority):
 
 ### Recommended Folder Structure
 
+**Progressive Loading Architecture**
+
+OpenCode skills use a three-level progressive disclosure system to optimize context usage and performance:
+
+1. **Metadata (name + description)**: Always loaded (~100 words) for skill discovery
+2. **SKILL.md body**: Loaded when skill triggers (keep under 5,000 words)
+3. **Bundled resources**: Loaded on-demand as needed by Claude (unlimited size)
+
 **Basic Skill Directory:**
 ```
 skill-name/
-└── SKILL.md
+└── SKILL.md              # Required - main skill definition (< 5,000 words)
 ```
 
-**Complete Skill Directory (with supporting files):**
+**Complete Modular Skill Directory:**
 ```
 skill-name/
 ├── SKILL.md              # Required - main skill definition
 ├── scripts/              # Optional - executable code files
-│   ├── helper.py
-│   └── deploy.sh
-├── references/           # Optional - documentation and resources
-│   ├── api-docs.md
-│   └── examples.md
+│   ├── helper.py         # Self-contained automation scripts
+│   └── deploy.sh         # Deployment automation
+├── references/           # Optional - documentation for context loading
+│   ├── api-docs.md       # Detailed API references
+│   ├── examples.md       # Comprehensive examples
+│   └── troubleshooting.md # Debug guidance
 └── assets/               # Optional - templates and resources
-    ├── template.html
-    └── config.json
+    ├── template.html     # Output templates
+    ├── config.json       # Configuration files
+    └── icons/            # Visual assets
 ```
+
+### Modular File Organization Best Practices
+
+**Progressive File Loading Pattern:**
+- Keep `SKILL.md` lean (under 500 lines optimal) for fast loading
+- Move detailed reference documentation to `references/` directory
+- Place complex examples in `references/examples.md`
+- Store reusable templates in `assets/` directory
+- Keep automation logic in `scripts/` directory
+
+**Content Separation Strategy:**
+- `SKILL.md`: Core instructions, triggers, and basic examples
+- `references/`: Detailed documentation, patterns, troubleshooting
+- `scripts/`: Validation, testing, deployment automation
+- `assets/`: Templates, configurations, static resources
+
+**Context Optimization:**
+```
+# Fast-loading skill structure
+skill-name/
+├── SKILL.md              # < 500 lines, core logic only
+├── references/
+│   ├── advanced-patterns.md  # Loaded when complex patterns needed
+│   ├── troubleshooting.md    # Loaded when errors occur
+│   └── api-reference.md      # Loaded when API details needed
+└── scripts/
+    └── validate.py      # Never loaded into context, executed directly
+```
+
+**File Organization Guidelines:**
+- Each supporting file should serve one clear purpose
+- Avoid duplication between `SKILL.md` and reference files
+- Use clear, descriptive filenames
+- Structure reference files for selective loading
+- Keep scripts self-contained and executable
 
 ### Naming Conventions
 
@@ -174,6 +259,213 @@ User: "Create a skill that reviews Python code for PEP-8 style issues."
 
 **Result**: The skill-factory produces a complete SKILL.md with proper frontmatter and behavior instructions.
 
+## Updating Existing Skills
+
+### When to Update Skills
+
+Update skills when:
+- Adding new functionality or capabilities
+- Fixing bugs or improving behavior
+- Updating for new OpenCode versions
+- Refining based on real usage feedback
+- Improving documentation or examples
+
+### Skill Update Workflow
+
+**Step 1: Backup Current Skill**
+```bash
+# Create backup before major changes
+cp -r skill-name skill-name.backup-$(date +%Y%m%d)
+```
+
+**Step 2: Choose Update Strategy**
+
+**Minor Updates (Documentation, Examples):**
+1. Edit `SKILL.md` directly
+2. Update reference files in `references/`
+3. Test with validation script
+4. Version bump (patch)
+
+**Major Updates (Structure, Logic):**
+1. Create new modular structure if missing
+2. Move detailed content to appropriate directories
+3. Update automation scripts
+4. Comprehensive testing
+5. Version bump (minor/major)
+
+**Step 3: Validate Changes**
+```bash
+# Run skill validation
+./scripts/validate.py skill-name/
+
+# Test skill loading
+skill skill-name --test
+
+# Verify syntax
+yamllint skill-name/SKILL.md
+```
+
+**Step 4: Version Management**
+
+**Semantic Versioning for Skills:**
+- `MAJOR.MINOR.PATCH` (e.g., 1.2.3)
+- MAJOR: Breaking changes, new architecture
+- MINOR: New features, backward compatible
+- PATCH: Bug fixes, documentation improvements
+
+**Update Strategy Options:**
+
+1. **In-Place Update** (Patch/Minor):
+   - Directly edit existing files
+   - Maintain same directory structure
+   - Suitable for non-breaking changes
+
+2. **Parallel Development** (Major):
+   - Create `skill-name-v2/` alongside original
+   - Test thoroughly before migration
+   - Migrate when ready, archive old version
+
+3. **Incremental Migration** (Complex):
+   - Create modular structure gradually
+   - Move content piece by piece
+   - Maintain backward compatibility during transition
+
+### Progressive Loading Implementation
+
+**Converting Single-File to Modular:**
+
+1. **Analyze Current Content:**
+   ```bash
+   # Check current file size
+   wc -l skill-name/SKILL.md
+   
+   # Identify sections to extract
+   grep -n "##" skill-name/SKILL.md
+   ```
+
+2. **Create Modular Structure:**
+   ```bash
+   mkdir -p skill-name/{scripts,references,assets}
+   
+   # Move detailed examples
+   sed -n '/## Examples/,$p' skill-name/SKILL.md > skill-name/references/examples.md
+   
+   # Keep core in SKILL.md
+   sed -i '/## Examples/,$d' skill-name/SKILL.md
+   echo '## Examples\nSee [references/examples.md](references/examples.md) for detailed examples.' >> skill-name/SKILL.md
+   ```
+
+3. **Update References:**
+   ```markdown
+   <!-- In SKILL.md -->
+   ## Advanced Patterns
+   See [references/advanced-patterns.md](references/advanced-patterns.md) for comprehensive pattern documentation.
+   
+   ## Troubleshooting
+   Refer to [references/troubleshooting.md](references/troubleshooting.md) for common issues.
+   ```
+
+**Content Migration Guidelines:**
+- Move content > 500 lines to reference files
+- Keep essential triggers and basic instructions in `SKILL.md`
+- Use cross-references between files
+- Test each migration step
+
+### Testing and Validation
+
+**Automated Validation:**
+```python
+# scripts/validate.py
+import yaml
+import re
+import os
+
+def validate_skill(skill_path):
+    """Validate skill structure and content"""
+    errors = []
+    
+    # Check required files
+    if not os.path.exists(f"{skill_path}/SKILL.md"):
+        errors.append("Missing SKILL.md")
+    
+    # Validate frontmatter
+    with open(f"{skill_path}/SKILL.md") as f:
+        content = f.read()
+        try:
+            frontmatter = yaml.safe_load(content.split('---')[1])
+            validate_frontmatter(frontmatter, errors)
+        except Exception as e:
+            errors.append(f"Invalid YAML: {e}")
+    
+    return errors
+```
+
+**Manual Testing Checklist:**
+- [ ] Skill loads without errors
+- [ ] Description triggers appropriately
+- [ ] All examples work as expected
+- [ ] Reference files load correctly
+- [ ] Scripts execute successfully
+- [ ] No broken links or references
+
+### Configuration Updates
+
+**Maintain Configuration During Updates:**
+Back up and preserve user configurations:
+```bash
+# Export current permissions
+opencode config get permission.skill > permissions-backup.json
+
+# After update, restore if needed
+opencode config set permission.skill "$(cat permissions-backup.json)"
+```
+
+**Version Pinning (Advanced):**
+```json
+{
+  "skill": {
+    "my-skill": {
+      "permission": "allow",
+      "version": ">=1.2.0,<2.0.0"
+    }
+  }
+}
+```
+
+### Rollback Procedures
+
+**Quick Rollback:**
+```bash
+# Restore from backup
+rm -rf skill-name
+mv skill-name.backup-YYYYMMDD skill-name
+```
+
+**Git-Based Rollback:**
+```bash
+# If using version control
+git checkout HEAD~1 -- skill-name/
+```
+
+### Update Notification Pattern
+
+**Communicate Changes:**
+```markdown
+## Changelog
+
+### v1.2.0 (2024-01-15)
+- Added modular file structure support
+- Improved pattern documentation
+- Updated validation scripts
+
+### v1.1.0 (2024-01-01)
+- Enhanced example coverage
+- Fixed bug in trigger detection
+
+### v1.0.0 (2023-12-15)
+- Initial release
+```
+
 ## Example output
 ```markdown
 ---
@@ -191,4 +483,10 @@ When a user needs a PEP-8 style analysis of a Python file.
 1. Take the provided Python source code as input
 2. Analyze for PEP-8 violations using common style rules
 3. Output a structured list of issues with line numbers and suggestions
+
+## Advanced Patterns
+See [references/advanced-patterns.md](references/advanced-patterns.md) for complex PEP-8 scenarios.
+
+## Troubleshooting
+Refer to [references/troubleshooting.md](references/troubleshooting.md) for common analysis issues.
 ```

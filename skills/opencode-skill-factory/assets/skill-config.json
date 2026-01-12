@@ -1,0 +1,33 @@
+{
+  "skill_defaults": {
+    "license": "MIT",
+    "scope": "project",
+    "description_min_length": 20,
+    "description_max_length": 1024,
+    "name_max_length": 64
+  },
+  "validation_rules": {
+    "name_pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+    "required_frontmatter": ["name", "description"],
+    "optional_frontmatter": ["license", "scope"]
+  },
+  "directory_structure": {
+    "required_files": ["SKILL.md"],
+    "optional_directories": ["scripts", "references", "assets"]
+  },
+  "common_licenses": [
+    "MIT",
+    "Apache-2.0",
+    "GPL-3.0",
+    "BSD-3-Clause",
+    "ISC"
+  ],
+  "trigger_keywords": [
+    "when",
+    "use",
+    "trigger",
+    "invoke",
+    "call",
+    "apply"
+  ]
+}
